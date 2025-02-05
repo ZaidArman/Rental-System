@@ -84,7 +84,7 @@
 
 from rest_framework.authtoken.models import Token
 from accounts.serializers import (
-    SignUpSerializer, LoginSerializer, UserSerializer, ResetPasswordEmail, SetNewPasswordSerializer
+    SignUpSerializer, LoginSerializer, UserSerializer, ResetPasswordEmail, SetNewPasswordSerializer, ProfileSerializer
 )
 from django.utils.timezone import now
 from rest_framework import status
@@ -97,6 +97,31 @@ from drf_yasg import openapi
 
 from accounts.models import CustomUser
 from accounts.utils import EmailService
+from rest_framework.viewsets import ViewSet
+from rest_framework.decorators import action
+
+
+class UserProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        serializer = ProfileSerializer(user)
+        print("Serialized User Data:", serializer.data)  # Debugging
+        return Response(serializer.data)
+
+    def put(self, request):
+        user = request.user
+        data = request.data.copy()
+        data.pop("email", None)  # Prevent email update
+        data.pop("password", None)  # Prevent password update
+
+        serializer = ProfileSerializer(user, data=data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
 
 class UsersView(ModelViewSet):
     serializer_class = UserSerializer
@@ -126,9 +151,18 @@ class LoginView(APIView):
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
-            user = serializer.validated_data
+            user_data = serializer.validated_data  # Get user and role
+            user = user_data["user"]
+            role = user_data["role"]
+
             token, _ = Token.objects.get_or_create(user=user)
-            return Response({'token': token.key, 'message': 'Login successful!'}, status=status.HTTP_200_OK)
+
+            # Return token and role
+            return Response({
+                'token': token.key,
+                'role': role,  # Include the role
+                'message': 'Login successful!',
+            }, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class CustomForgetPasswordView(APIView):
