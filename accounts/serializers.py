@@ -8,6 +8,23 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
 
 
+from rest_framework import serializers
+from accounts.models import CustomUser
+
+
+
+class ProfileSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(read_only=True) 
+    password = serializers.CharField(write_only=True, min_length=8, required=False)
+
+    class Meta:
+        model = CustomUser
+        fields = ["id", "email", "first_name", "last_name", "phone_number", "address", "image", 'password']
+
+    def to_representation(self, instance):
+        data = super(ProfileSerializer, self).to_representation(instance)
+        data.pop("password", None) 
+        return data
 class UserSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(
         required=True,
@@ -27,26 +44,25 @@ class UserSerializer(serializers.ModelSerializer):
         return data
 
 
-# Sign Up Serializer
 class SignUpSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
+    image = serializers.ImageField(required=False)  # Add image field
 
     class Meta:
         model = CustomUser
-        fields = ['email', 'cnic', 'phone_number', 'address', 'password', 'first_name', 'last_name']
+        fields = ['email', 'cnic', 'phone_number', 'address', 'password', 'first_name', 'last_name', 'roles', 'image']
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
-        user = CustomUser.objects.create_user(
-            email=validated_data['email'],
-            cnic=validated_data['cnic'],
-            phone_number=validated_data['phone_number'],
-            address=validated_data['address'],
-            password=validated_data['password'],
-            first_name=validated_data['first_name'],
-            last_name=validated_data['last_name']
-        )
+        image = validated_data.pop('image', None)  # Extract image
+        user = CustomUser.objects.create_user(**validated_data)
+        
+        if image:
+            user.image = image
+            user.save()
+            
         return user
+
 
 # Login Serializer
 class LoginSerializer(serializers.Serializer):
@@ -62,7 +78,12 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("Invalid credentials.")
         if not user.is_active:
             raise serializers.ValidationError("User account is disabled.")
-        return user
+        
+        # Return the user object with the role
+        return {
+            "user": user,
+            "role": user.roles,  # Extract user role from model
+        }
 
 class ResetPasswordEmail(serializers.Serializer):
     email = serializers.EmailField(required=True)
