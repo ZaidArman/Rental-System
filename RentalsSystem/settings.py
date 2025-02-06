@@ -14,7 +14,7 @@ import datetime
 import os
 from pathlib import Path
 from decouple import config
-
+import stripe
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -183,9 +183,12 @@ CORS_ALLOW_ALL_ORIGINS = True  # For development only; restrict in production
 ALLOWED_HOSTS =['*']
 
 # Stripe Keys
-STRIPE_PUBLIC_KEY = os.getenv('STRIPE_PUBLIC_KEY')
-STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
-STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', 'your_webhook_secret')
+STRIPE_SECRET_KEY = 'sk_test_51PbKxoRupyFl3T61Zzo1VQgXCLcST70zDo26DrMaT15RZ5G35NpBzK5B8fZt7MTzeQ9MLH9o1LZEpFkVLv2Vanfb005bx3TFgJ'
+STRIPE_PUBLISHABLE_KEY = 'pk_test_51PbKxoRupyFl3T61xv1Tv11SIphMI6UPJHBs6hEc0JNOXlJxm06svt2SDsxz2KQfKzcpQzR3Gscl2rQrY8O9gnAw00yL2Y6RIz'
+stripe.api_key = STRIPE_SECRET_KEY
+# STRIPE_PUBLIC_KEY = os.getenv('STRIPE_PUBLIC_KEY')
+# STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
+# STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', 'your_webhook_secret')
 
 
 # Accounts
