@@ -7,10 +7,17 @@ class BrandSerializer(serializers.ModelSerializer):
         model = Brand
         fields = '__all__'
 
+# class CarSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Car
+#         fields = '__all__'
+
 class CarSerializer(serializers.ModelSerializer):
+    car_brand = BrandSerializer(read_only=True)  # ✅ Include full brand details
+
     class Meta:
         model = Car
-        fields = '__all__'
+        fields = '__all__'  # ✅ Now includes car_brand details
 
 
 class BrandSerializer(serializers.ModelSerializer):
