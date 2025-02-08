@@ -12,6 +12,12 @@ class CarSerializer(serializers.ModelSerializer):
         model = Car
         fields = '__all__'
 
+
+class BrandSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Brand
+        fields = '__all__'
+
 class BookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking

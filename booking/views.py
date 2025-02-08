@@ -2,7 +2,7 @@ from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from .models import Car, Booking, Brand
-from .serializers import BrandSerializer, CarSerializer, BookingSerializer
+from .serializers import CarSerializer, BookingSerializer, BrandSerializer
 from rest_framework.viewsets import ModelViewSet
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter
@@ -44,6 +44,12 @@ class CarListView(ModelViewSet):
     )
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
+
+
+class BrandListView(ModelViewSet):
+    queryset = Brand.objects.all()
+    serializer_class = BrandSerializer
+
 
 
 class BookingCreateView(ModelViewSet):
