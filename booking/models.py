@@ -12,6 +12,10 @@ class Car_type(models.TextChoices):
     HYBRID = 'H', 'Hybrid'
     
 class Car(models.Model):
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('inactive', 'Inactive'),
+    ]
     car_brand = models.ForeignKey(Brand, on_delete=models.CASCADE, null=True)
     car_model = models.CharField(max_length=100, null=True)
     seats = models.CharField(max_length=100, null=True)
@@ -24,6 +28,8 @@ class Car(models.Model):
     location = models.CharField(max_length=255)
     licence_plate_no = models.CharField(max_length=50, null=True)
     image = models.ImageField(upload_to="car", null=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="active")  # ✅ Added status
+
 
     def __str__(self):
         return self.type
