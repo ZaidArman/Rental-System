@@ -77,8 +77,42 @@ class BookingCreateView(ModelViewSet):
             200: openapi.Response('Success', BookingSerializer(many=True))
         }
     )
+
+    def retrieve(self, request, pk=None):
+        """Retrieve a single booking by ID with car details"""
+        try:
+            booking = self.get_object()
+            serializer = self.get_serializer(booking)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Booking.DoesNotExist:
+            return Response({"error": "Booking not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+    
+
+    def update(self, request, pk=None):
+        """Update booking status"""
+        from .models import Status
+        try:
+            booking = self.get_object()
+            new_status = request.data.get("status")  # Get status from request
+
+            # Validate status
+            if new_status not in dict(Status.choices).keys():
+                return Response({"error": "Invalid status"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Update only the status field
+            booking.status = new_status
+            booking.save()
+
+            return Response(
+                {"message": "Booking status updated successfully", "status": booking.status},
+                status=status.HTTP_200_OK
+            )
+        except Booking.DoesNotExist:
+            return Response({"error": "Booking not found"}, status=status.HTTP_404_NOT_FOUND)

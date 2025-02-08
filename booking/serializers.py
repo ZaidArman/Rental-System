@@ -26,6 +26,7 @@ class BrandSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class BookingSerializer(serializers.ModelSerializer):
+    car_details = CarSerializer(source="car", read_only=True)
     class Meta:
         model = Booking
         fields = [
@@ -41,6 +42,7 @@ class BookingSerializer(serializers.ModelSerializer):
             "from_date",
             "to_date",
             "status",
+            "car_details",
         ]
         read_only_fields = ["status", "user"]  # Prevent user and status from being updated manually
 
