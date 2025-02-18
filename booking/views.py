@@ -62,15 +62,7 @@ class BookingCreateView(ModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter]
     search_fields = ['status', 'car__car_brand__brand_name', 'car__car_model']
 
-    @swagger_auto_schema(
-        request_body=BookingSerializer,
-        responses={
-            201: openapi.Response('Created', BookingSerializer),
-            400: "Bad Request"
-        }
-    )
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+
 
     @swagger_auto_schema(
         responses={
@@ -92,23 +84,31 @@ class BookingCreateView(ModelViewSet):
         return super().list(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        booking = serializer.save(user=self.request.user)
+        # Mark the car as inactive
+        car = booking.car
+        car.status = "inactive"
+        car.save()
     
 
+
     def update(self, request, pk=None):
-        """Update booking status"""
+        """Update booking status and update car status accordingly"""
         from .models import Status
         try:
             booking = self.get_object()
-            new_status = request.data.get("status")  # Get status from request
+            new_status = request.data.get("status")
 
-            # Validate status
             if new_status not in dict(Status.choices).keys():
                 return Response({"error": "Invalid status"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Update only the status field
             booking.status = new_status
             booking.save()
+
+            # If booking is canceled, set car as active
+            if new_status == Status.CANCELLED:
+                booking.car.status = "active"
+                booking.car.save()
 
             return Response(
                 {"message": "Booking status updated successfully", "status": booking.status},
@@ -116,3 +116,5 @@ class BookingCreateView(ModelViewSet):
             )
         except Booking.DoesNotExist:
             return Response({"error": "Booking not found"}, status=status.HTTP_404_NOT_FOUND)
+
+

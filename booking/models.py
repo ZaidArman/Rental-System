@@ -39,6 +39,8 @@ class Status(models.TextChoices):
     PENDING = 'P', 'Pending'
     APPROVED = 'A', 'Approved'
     CANCELLED = 'C', 'Cancelled'
+    PAID = 'S', 'PAID'
+
 
 
 class Booking(models.Model):
@@ -61,3 +63,14 @@ class Booking(models.Model):
 
     def __str__(self):
         return self.status
+    
+
+    def save(self, *args, **kwargs):
+        """Calculate the total price before saving the booking."""
+        if self.from_date and self.to_date and self.car:
+            print(self.from_date, 'Form', self.to_date, 'TO')
+            number_of_days = max(1, (self.to_date - self.from_date).days)  # Ensure at least 1 day
+            print(number_of_days)
+            self.total_price = number_of_days * self.car.price_per_day  # Calculate total price
+
+        super().save(*args, **kwargs)

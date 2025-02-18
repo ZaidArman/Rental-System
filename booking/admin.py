@@ -5,7 +5,7 @@ from .models import Car, Booking, Brand
 
 @admin.register(Car)
 class CarAdmin(admin.ModelAdmin):
-    list_display = ['car_brand', 'car_model']
+    list_display = ['car_model']
 
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):

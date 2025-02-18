@@ -6,14 +6,19 @@ from rest_framework.views import APIView
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import SubscriptionPlan, Payment
+from .models import Payment
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.generics import RetrieveAPIView
 from .serializers import PaymentSerializer
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from booking.models import *
+import stripe
+from django.conf import settings
 
-class CreateCheckoutSession(APIView):
+stripe.api_key = settings.STRIPE_SECRET_KEY
+
+class CreateCarBookingCheckoutSession(APIView):
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
@@ -36,56 +41,45 @@ class CreateCheckoutSession(APIView):
     def post(self, request, *args, **kwargs):
         try:
             user = request.user
-            plan_id = request.data.get("plan_id")
-            plan = get_object_or_404(SubscriptionPlan, id=plan_id)
+            booking_id = request.data.get("booking_id")
+            booking = get_object_or_404(Booking, id=booking_id, user=user)
+
+            # Calculate total price in cents for Stripe
+            unit_amount = int(booking.total_price * 100)
 
             checkout_session = stripe.checkout.Session.create(
                 payment_method_types=['card'],
                 customer_email=user.email,
-                line_items=[
-                    {
-                        'price_data': {
-                            'currency': 'usd',
-                            'product_data': {
-                                'name': plan.name,
-                            },
-                            'unit_amount': int(plan.price * 100),  # Convert to cents
-                            'recurring': {
-                                'interval': 'month',  # Change to 'year' for yearly plans
-                            },
+                line_items=[{
+                    'price_data': {
+                        'currency': 'usd',
+                        'product_data': {
+                            'name': f"Car Booking - {booking.car.car_model}",
                         },
-                        'quantity': 1,
+                        'unit_amount': unit_amount,
                     },
-                ],
-                mode='subscription',
-                success_url="http://127.0.0.1:8000/payment-success/",
-                cancel_url="http://127.0.0.1:8000/payment-cancelled/",
+                    'quantity': 1,
+                }],
+                mode='payment',
+                success_url=settings.STRIPE_SUCCESS_URL + "?session_id={CHECKOUT_SESSION_ID}",
+                cancel_url=settings.STRIPE_CANCEL_URL,
+                metadata={"booking_id": str(booking.id)}
             )
 
-            # Save the payment record
-            payment = Payment.objects.create(
-                user=user,
-                stripe_checkout_id=checkout_session.id,
-                amount=plan.price,
-                status="Pending"
-            )
+            # Link payment to the booking
+            # Payment.objects.create(
+            #     user=user,
+            #     booking=booking,
+            #     stripe_checkout_id=checkout_session.id,
+            #     amount=booking.car.price_per_day,
+            #     status="Pending"
+            # )
 
-            return Response({'sessionId': checkout_session.id})
+            return JsonResponse({'url': checkout_session.url})
 
         except Exception as e:
             return Response({'error': str(e)}, status=500)
 
-
-class PaymentStatusView(RetrieveAPIView):
-    """
-    API endpoint to retrieve user payment status.
-    """
-    
-    serializer_class = PaymentSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        return Payment.objects.filter(user=self.request.user)
 
 
 
@@ -94,29 +88,68 @@ class PaymentStatusView(RetrieveAPIView):
     operation_description="Stripe webhook for handling payment events",
     responses={200: openapi.Response("Webhook processed successfully")},
 )
-@api_view(['POST'])  # Add this decorator to make it work with DRF
 
 @csrf_exempt
+@api_view(['POST'])
 def stripe_webhook(request):
     payload = request.body
     sig_header = request.headers.get("Stripe-Signature", "")
-
+    
     try:
-        event = stripe.Webhook.construct_event(payload, sig_header, settings.STRIPE_SECRET_KEY)
-    except ValueError:
-        return JsonResponse({'error': 'Invalid payload'}, status=400)
-    except stripe.error.SignatureVerificationError:
-        return JsonResponse({'error': 'Invalid signature'}, status=400)
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+        )
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except stripe.error.SignatureVerificationError as e:
+        return JsonResponse({'error': str(e)}, status=400)
 
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
+        booking_id = session.get("metadata", {}).get("booking_id")
+        if not booking_id:
+            return JsonResponse({'error': 'Missing booking ID'}, status=400)
 
+        
         try:
-            payment = Payment.objects.get(stripe_checkout_id=session["id"])
-            payment.status = "Paid"
-            payment.stripe_payment_intent = session.get("payment_intent")
-            payment.save()
-        except Payment.DoesNotExist:
-            return JsonResponse({'error': 'Payment not found'}, status=404)
+            booking = Booking.objects.get(id=booking_id)
+            user = booking.user
+
+            # Check if payment already exists
+            payment_exists = Payment.objects.filter(stripe_checkout_id=session.id).exists()
+            if payment_exists:
+                return JsonResponse({'error': 'Duplicate payment detected'}, status=400)
+
+            # Create the Payment entry after successful checkout
+            Payment.objects.create(
+                user=user,
+                booking=booking,
+                stripe_checkout_id=session.id,
+                amount=booking.total_price,
+                status="Paid"
+            )
+            booking.status = Status.APPROVED
+            booking.status = Status.PAID
+            booking.save()
+
+        except Booking.DoesNotExist:
+            return JsonResponse({'error': 'Booking not found'}, status=404)
 
     return JsonResponse({'status': 'success'})
+
+
+
+
+
+# class PaymentStatusView(RetrieveAPIView):
+#     """
+#     API endpoint to retrieve user payment status.
+#     """
+    
+#     serializer_class = PaymentSerializer
+#     permission_classes = [IsAuthenticated]
+
+#     def get_queryset(self):
+#         return Payment.objects.filter(user=self.request.user)
+
+

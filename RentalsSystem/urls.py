@@ -41,7 +41,7 @@ urlpatterns = [
     path('accounts/', include('accounts.urls')),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('booking/', include('booking.urls')),
-    path('subscription/', include('subscription.urls')),
+    path('payment/', include('subscription.urls')),
 
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
