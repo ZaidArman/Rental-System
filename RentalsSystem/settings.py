@@ -191,9 +191,9 @@ ALLOWED_HOSTS =['*']
 # STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', 'your_webhook_secret')
 
 
-STRIPE_PUBLIC_KEY = 'pk_test_51PbKxoRupyFl3T61xv1Tv11SIphMI6UPJHBs6hEc0JNOXlJxm06svt2SDsxz2KQfKzcpQzR3Gscl2rQrY8O9gnAw00yL2Y6RIz'
-STRIPE_SECRET_KEY = 'sk_test_51PbKxoRupyFl3T61Zzo1VQgXCLcST70zDo26DrMaT15RZ5G35NpBzK5B8fZt7MTzeQ9MLH9o1LZEpFkVLv2Vanfb005bx3TFgJ'
-STRIPE_WEBHOOK_SECRET = 'your_webhook_secret'
+STRIPE_PUBLIC_KEY = os.getenv('STRIPE_PUBLIC_KEY')
+STRIPE_SECRET_KEY =os.getenv('STRIPE_SECRET_KEY')
+STRIPE_WEBHOOK_SECRET=os.getenv('STRIPE_WEBHOOK_SECRET')
 STRIPE_SUCCESS_URL = 'http://localhost:5173/rentedVehicle'  # Frontend URL to handle success
 STRIPE_CANCEL_URL = 'http://localhost:5173/rentedVehicle'
 
