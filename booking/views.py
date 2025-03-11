@@ -8,6 +8,11 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
+from booking.models import Booking, Car, Status
+from django.shortcuts import get_object_or_404
+from rest_framework.views import APIView
 
 
 class BrandsViews(ModelViewSet):
@@ -118,3 +123,25 @@ class BookingCreateView(ModelViewSet):
             return Response({"error": "Booking not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
+
+
+
+class CancelBookingView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        booking_id = request.data.get("booking_id")
+
+        if not booking_id:
+            return Response({"error": "Booking ID is required"}, status=400)
+
+        booking = get_object_or_404(Booking, id=booking_id, user=request.user)
+
+        # Reverse the booking and car status
+        booking.status = Status.CANCELLED
+        booking.car.status = "active"
+
+        booking.save()
+        booking.car.save()
+
+        return Response({"message": "Booking cancelled and car status updated successfully"}, status=200)
